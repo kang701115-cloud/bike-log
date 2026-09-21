@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <meta name="theme-color" content="#0d7df5">
+
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon-192.png">
+
+  <title>Ride Log</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #f5f7fa;
+      color: #111827;
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        "Noto Sans KR",
+        sans-serif;
+    }
+
+    .app {
+      width: min(760px, calc(100% - 28px));
+      margin: auto;
+      padding: 30px 0 60px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 22px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 28px;
+      font-weight: 800;
+    }
+
+    .version {
+      font-size: 13px;
+      color: #64748b;
+    }
+
+    .card {
+      background: white;
+      border: 1px solid #e5eaf0;
+      border-radius: 15px;
+      padding: 24px;
+      margin-bottom: 18px;
+
+      box-shadow:
+        0 4px 16px rgba(15, 23, 42, 0.04);
+    }
+
+    .card-title {
+      margin: 0 0 20px;
+      font-size: 18px;
+      font-weight: 750;
+    }
+
+    /* CURRENT RIDE */
+
+    .ride {
+      text-align: center;
+    }
+
+    .distance {
+      font-size: clamp(48px, 10vw, 70px);
+      font-weight: 800;
+      letter-spacing: -2px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .distance-unit {
+      font-size: 18px;
+      color: #64748b;
+      font-weight: 600;
+    }
+
+    .timer {
+      margin-top: 8px;
+      font-size: 25px;
+      color: #475569;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .ride-data {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      margin: 28px 0;
+      border-top: 1px solid #e5e7eb;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .data-box {
+      padding: 17px;
+    }
+
+    .data-box + .data-box {
+      border-left: 1px solid #e5e7eb;
+    }
+
+    .label {
+      font-size: 13px;
+      color: #64748b;
+    }
+
+    .value {
+      margin-top: 5px;
+      font-size: 20px;
+      font-weight: 750;
+    }
+
+    button {
+      width: 100%;
+      padding: 17px;
+      border: 0;
+      border-radius: 10px;
+
+      background: #0d7df5;
+      color: white;
+
+      font-size: 17px;
+      font-weight: 750;
+
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #066ee0;
+    }
+
+    button.stop {
+      background: #ef4444;
+    }
+
+    .gps {
+      margin-top: 12px;
+      color: #64748b;
+      font-size: 12px;
+    }
+
+    /* SUMMARY */
+
+    .summary {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+    }
+
+    .summary-box {
+      background: #f8fbff;
+      border: 1px solid #dbeafe;
+      border-radius: 11px;
+      padding: 17px;
+    }
+
+    .summary-number {
+      margin-top: 5px;
+      color: #0f3d8c;
+      font-size: 23px;
+      font-weight: 800;
+    }
+
+    /* HISTORY */
+
+    .history-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      padding: 15px 0;
+      border-bottom: 1px solid #eef2f6;
+    }
+
+    .history-row:last-child {
+      border-bottom: 0;
+    }
+
+    .history-date {
+      font-weight: 650;
+    }
+
+    .history-info {
+      margin-top: 4px;
+      color: #64748b;
+      font-size: 12px;
+    }
+
+    .history-km {
+      color: #0f3d8c;
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .empty {
+      padding: 20px 0;
+      color: #94a3b8;
+      text-align: center;
+    }
+
+    @media (max-width: 550px) {
+
+      .app {
+        width: calc(100% - 20px);
+        padding-top: 20px;
+      }
+
+      .card {
+        padding: 18px;
+      }
+
+      .summary {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .summary-box:last-child {
+        grid-column: 1 / -1;
+      }
+
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="app">
+
+  <header>
+    <h1>Ride Log</h1>
+    <div class="version">v0.2</div>
+  </header>
+
+
+  <section class="card ride">
+
+    <h2 class="card-title">
+      현재 라이딩
+    </h2>
+
+    <div>
+      <span id="distance" class="distance">
+        0.00
+      </span>
+
+      <span class="distance-unit">
+        km
+      </span>
+    </div>
+
+    <div id="timer" class="timer">
+      00:00:00
+    </div>
+
+
+    <div class="ride-data">
+
+      <div class="data-box">
+
+        <div class="label">
+          현재 속도
+        </div>
+
+        <div class="value">
+          <span id="currentSpeed">0.0</span>
+          km/h
+        </div>
+
+      </div>
+
+
+      <div class="data-box">
+
+        <div class="label">
+          평균 속도
+        </div>
+
+        <div class="value">
+          <span id="avgSpeed">0.0</span>
+          km/h
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <button id="rideButton">
+      라이딩 시작
+    </button>
+
+    <div id="gpsStatus" class="gps">
+      GPS 대기 중
+    </div>
+
+  </section>
+
+
+  <section class="card">
+
+    <h2 class="card-title">
+      주행 요약
+    </h2>
+
+    <div class="summary">
+
+      <div class="summary-box">
+
+        <div class="label">
+          이번 주
+        </div>
+
+        <div class="summary-number">
+          <span id="weekDistance">0.0</span> km
+        </div>
+
+      </div>
+
+
+      <div class="summary-box">
+
+        <div class="label">
+          이번 달
+        </div>
+
+        <div class="summary-number">
+          <span id="monthDistance">0.0</span> km
+        </div>
+
+      </div>
+
+
+      <div class="summary-box">
+
+        <div class="label">
+          전체
+        </div>
+
+        <div class="summary-number">
+          <span id="totalDistance">0.0</span> km
+        </div>
+
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <section class="card">
+
+    <h2 class="card-title">
+      최근 기록
+    </h2>
+
+    <div id="history"></div>
+
+  </section>
+
+</div>
+
+
+<script>
+
+let riding = false;
+
+let startTime = 0;
+let timerInterval = null;
+let watchId = null;
+
+let distanceM = 0;
+
+let previousPosition = null;
+
+let currentSpeed = 0;
+
+
+const rideButton =
+  document.getElementById("rideButton");
+
+const timerEl =
+  document.getElementById("timer");
+
+const distanceEl =
+  document.getElementById("distance");
+
+const currentSpeedEl =
+  document.getElementById("currentSpeed");
+
+const avgSpeedEl =
+  document.getElementById("avgSpeed");
+
+const gpsStatusEl =
+  document.getElementById("gpsStatus");
+
+
+rideButton.onclick = () => {
+
+  if (riding)
+    stopRide();
+  else
+    startRide();
+
+};
+
+
+function startRide() {
+
+  if (!navigator.geolocation) {
+
+    alert("GPS를 사용할 수 없습니다.");
+
+    return;
+
+  }
+
+  riding = true;
+
+  startTime = Date.now();
+
+  distanceM = 0;
+
+  previousPosition = null;
+
+  currentSpeed = 0;
+
+
+  rideButton.textContent =
+    "라이딩 종료";
+
+  rideButton.classList.add("stop");
+
+
+  timerInterval =
+    setInterval(updateDisplay, 1000);
+
+
+  watchId =
+    navigator.geolocation.watchPosition(
+
+      gpsUpdate,
+
+      gpsError,
+
+      {
+        enableHighAccuracy: true,
+        maximumAge: 1000,
+        timeout: 10000
+      }
+
+    );
+
+}
+
+
+function stopRide() {
+
+  riding = false;
+
+  clearInterval(timerInterval);
+
+
+  if (watchId !== null) {
+
+    navigator.geolocation.clearWatch(
+      watchId
+    );
+
+  }
+
+
+  const endTime =
+    Date.now();
+
+
+  const durationSec =
+    Math.floor(
+      (endTime - startTime) / 1000
+    );
+
+
+  const distanceKm =
+    distanceM / 1000;
+
+
+  const avgSpeed =
+    durationSec > 0
+      ?
+      distanceKm /
+      (durationSec / 3600)
+      :
+      0;
+
+
+  const ride = {
+
+    id:
+      Date.now(),
+
+    startedAt:
+      new Date(startTime).toISOString(),
+
+    endedAt:
+      new Date(endTime).toISOString(),
+
+    durationSec,
+
+    distanceKm,
+
+    avgSpeedKmh:
+      avgSpeed
+
+  };
+
+
+  const rides =
+    getRides();
+
+
+  rides.unshift(ride);
+
+
+  localStorage.setItem(
+    "rides",
+    JSON.stringify(rides)
+  );
+
+
+  rideButton.textContent =
+    "라이딩 시작";
+
+  rideButton.classList.remove("stop");
+
+
+  gpsStatusEl.textContent =
+    "기록 저장 완료";
+
+
+  loadHistory();
+
+  updateSummary();
+
+}
+
+
+function gpsUpdate(position) {
+
+  const {
+    latitude,
+    longitude,
+    accuracy,
+    speed
+  } = position.coords;
+
+
+  gpsStatusEl.textContent =
+    `GPS 정확도 ±${Math.round(accuracy)} m`;
+
+
+  /*
+    정확도가 너무 낮으면
+    거리 계산 제외
+  */
+
+  if (accuracy > 40)
+    return;
+
+
+  const current = {
+
+    lat: latitude,
+
+    lon: longitude
+
+  };
+
+
+  if (previousPosition) {
+
+    const segment =
+      haversine(
+        previousPosition.lat,
+        previousPosition.lon,
+        current.lat,
+        current.lon
+      );
+
+
+    /*
+      GPS drift 제거
+    */
+
+    if (
+      segment >= 3 &&
+      segment <= 100
+    ) {
+
+      distanceM += segment;
+
+    }
+
+  }
+
+
+  previousPosition =
+    current;
+
+
+  if (
+    speed !== null &&
+    speed >= 0
+  ) {
+
+    currentSpeed =
+      speed * 3.6;
+
+  }
+
+
+  updateDisplay();
+
+}
+
+
+function gpsError(error) {
+
+  console.error(error);
+
+  gpsStatusEl.textContent =
+    "GPS 신호 없음";
+
+}
+
+
+function updateDisplay() {
+
+  if (!riding)
+    return;
+
+
+  const elapsed =
+    Math.floor(
+      (Date.now() - startTime) / 1000
+    );
+
+
+  const km =
+    distanceM / 1000;
+
+
+  const avg =
+    elapsed > 0
+      ?
+      km / (elapsed / 3600)
+      :
+      0;
+
+
+  timerEl.textContent =
+    formatTime(elapsed);
+
+
+  distanceEl.textContent =
+    km.toFixed(2);
+
+
+  currentSpeedEl.textContent =
+    currentSpeed.toFixed(1);
+
+
+  avgSpeedEl.textContent =
+    avg.toFixed(1);
+
+}
+
+
+function haversine(
+  lat1,
+  lon1,
+  lat2,
+  lon2
+) {
+
+  const R = 6371000;
+
+  const rad =
+    value =>
+      value * Math.PI / 180;
+
+
+  const p1 =
+    rad(lat1);
+
+  const p2 =
+    rad(lat2);
+
+
+  const dp =
+    rad(lat2 - lat1);
+
+  const dl =
+    rad(lon2 - lon1);
+
+
+  const a =
+    Math.sin(dp / 2) ** 2
+    +
+    Math.cos(p1)
+    *
+    Math.cos(p2)
+    *
+    Math.sin(dl / 2) ** 2;
+
+
+  return (
+    R *
+    2 *
+    Math.atan2(
+      Math.sqrt(a),
+      Math.sqrt(1 - a)
+    )
+  );
+
+}
+
+
+function getRides() {
+
+  return JSON.parse(
+    localStorage.getItem("rides")
+    ||
+    "[]"
+  );
+
+}
+
+
+function updateSummary() {
+
+  const rides =
+    getRides();
+
+
+  const now =
+    new Date();
+
+
+  const monthStart =
+    new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      1
+    );
+
+
+  const weekStart =
+    new Date(now);
+
+
+  const day =
+    weekStart.getDay();
+
+
+  weekStart.setDate(
+    weekStart.getDate()
+    +
+    (
+      day === 0
+        ? -6
+        : 1 - day
+    )
+  );
+
+
+  weekStart.setHours(
+    0,
+    0,
+    0,
+    0
+  );
+
+
+  let week = 0;
+
+  let month = 0;
+
+  let total = 0;
+
+
+  rides.forEach(ride => {
+
+    const date =
+      new Date(
+        ride.startedAt
+      );
+
+
+    total +=
+      ride.distanceKm;
+
+
+    if (date >= weekStart)
+      week += ride.distanceKm;
+
+
+    if (date >= monthStart)
+      month += ride.distanceKm;
+
+  });
+
+
+  document.getElementById(
+    "weekDistance"
+  ).textContent =
+    week.toFixed(1);
+
+
+  document.getElementById(
+    "monthDistance"
+  ).textContent =
+    month.toFixed(1);
+
+
+  document.getElementById(
+    "totalDistance"
+  ).textContent =
+    total.toFixed(1);
+
+}
+
+
+function loadHistory() {
+
+  const history =
+    document.getElementById("history");
+
+
+  const rides =
+    getRides();
+
+
+  history.innerHTML = "";
+
+
+  if (!rides.length) {
+
+    history.innerHTML =
+      `
+      <div class="empty">
+        기록 없음
+      </div>
+      `;
+
+    return;
+
+  }
+
+
+  rides
+    .slice(0, 10)
+    .forEach(ride => {
+
+      const date =
+        new Date(
+          ride.startedAt
+        );
+
+
+      const row =
+        document.createElement("div");
+
+
+      row.className =
+        "history-row";
+
+
+      row.innerHTML =
+        `
+        <div>
+
+          <div class="history-date">
+
+            ${date.toLocaleDateString(
+              "ko-KR"
+            )}
+
+          </div>
+
+          <div class="history-info">
+
+            ${formatTime(
+              ride.durationSec
+            )}
+
+            ·
+
+            ${ride.avgSpeedKmh.toFixed(1)}
+
+            km/h
+
+          </div>
+
+        </div>
+
+        <div class="history-km">
+
+          ${ride.distanceKm.toFixed(2)}
+          km
+
+        </div>
+        `;
+
+
+      history.appendChild(row);
+
+    });
+
+}
+
+
+function formatTime(sec) {
+
+  const h =
+    Math.floor(sec / 3600);
+
+  const m =
+    Math.floor(
+      (sec % 3600) / 60
+    );
+
+  const s =
+    sec % 60;
+
+
+  return [
+    h,
+    m,
+    s
+  ]
+    .map(
+      n =>
+        String(n)
+          .padStart(2, "0")
+    )
+    .join(":");
+
+}
+
+
+/*
+  Service Worker
+*/
+
+if ("serviceWorker" in navigator) {
+
+  window.addEventListener(
+    "load",
+    () => {
+
+      navigator.serviceWorker.register(
+        "./service-worker.js"
+      );
+
+    }
+  );
+
+}
+
+
+loadHistory();
+
+updateSummary();
+
+</script>
+
+</body>
+</html>
